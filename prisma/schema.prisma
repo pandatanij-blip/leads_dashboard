@@ -1,0 +1,237 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  SALES
+  DEVELOPER
+}
+enum LeadStatus {
+  NEW
+  CONTACTED
+  REPLIED
+  INTERESTED
+  DEMO_SENT
+  FOLLOW_UP
+  NEGOTIATION
+  WON
+  LOST
+  NOT_INTERESTED
+}
+enum WebsiteStatus {
+  NO_WEBSITE
+  OUTDATED
+  PRESENT
+  ECOMMERCE_NEEDED
+  UNKNOWN
+}
+enum Intent {
+  HIGH
+  MEDIUM
+  LOW
+  UNVERIFIED
+}
+enum ActivityType {
+  CALL
+  WHATSAPP
+  EMAIL
+  MEETING
+  DEMO
+  QUOTATION
+  FOLLOW_UP
+  NOTE
+  STATUS_CHANGE
+}
+enum FollowUpStatus {
+  PENDING
+  DONE
+}
+enum QuoteStatus {
+  NOT_SENT
+  SENT
+  VIEWED
+  NEGOTIATING
+  ACCEPTED
+  REJECTED
+}
+enum SignalType {
+  WEBSITE_REQUIRED
+  WEB_DEVELOPER_REQUIRED
+  ECOMMERCE_REQUIRED
+  ONLINE_STORE_REQUIRED
+  BUSINESS_WEBSITE
+  DIGITAL_MARKETING
+  ONLINE_BOOKING
+  ONLINE_CATALOGUE
+  NEW_BUSINESS
+  BUSINESS_EXPANSION
+  OTHER
+}
+
+model User {
+  id String @id @default(cuid())
+  name String
+  email String @unique
+  phone String?
+  passwordHash String
+  role Role @default(SALES)
+  title String?
+  createdAt DateTime @default(now())
+  leads Lead[]
+  activities Activity[]
+  notifications Notification[]
+}
+
+model Industry {
+  id String @id @default(cuid())
+  name String @unique
+  leads Lead[]
+  signals PublicSignal[]
+}
+
+model LeadSource {
+  id String @id @default(cuid())
+  name String @unique
+  leads Lead[]
+}
+
+model Campaign {
+  id String @id @default(cuid())
+  name String
+  startsAt DateTime?
+  endsAt DateTime?
+  active Boolean @default(true)
+  leads Lead[]
+}
+
+model Package {
+  id String @id @default(cuid())
+  name String
+  price Int
+  priceMax Int?
+  description String?
+  amc String?
+  active Boolean @default(true)
+  leads Lead[]
+  quotations Quotation[]
+}
+
+model Lead {
+  id String @id @default(cuid())
+  seq Int @unique @default(autoincrement())
+  businessName String
+  contactPerson String?
+  designation String?
+  phone String
+  phoneNorm String
+  email String?
+  address String?
+  area String?
+  city String @default("Faridabad")
+  mapsUrl String?
+  website String?
+  instagram String?
+  facebook String?
+  websiteStatus WebsiteStatus @default(UNKNOWN)
+  intent Intent @default(UNVERIFIED)
+  intentSignal String?
+  status LeadStatus @default(NEW)
+  quotedAmount Int @default(0)
+  probability Int @default(5)
+  score Int @default(0)
+  nextFollowUp DateTime?
+  lastContacted DateTime?
+  notes String?
+  techNotes String?
+  isDemo Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  industryId String?
+  industry Industry? @relation(fields: [industryId], references: [id])
+  sourceId String?
+  source LeadSource? @relation(fields: [sourceId], references: [id])
+  assignedToId String?
+  assignedTo User? @relation(fields: [assignedToId], references: [id])
+  campaignId String?
+  campaign Campaign? @relation(fields: [campaignId], references: [id])
+  packageId String?
+  package Package? @relation(fields: [packageId], references: [id])
+  activities Activity[]
+  followUps FollowUp[]
+  quotations Quotation[]
+  signals PublicSignal[]
+  @@index([phoneNorm])
+  @@index([status])
+  @@index([nextFollowUp])
+}
+
+model Activity {
+  id String @id @default(cuid())
+  leadId String
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId String?
+  user User? @relation(fields: [userId], references: [id])
+  type ActivityType
+  content String
+  callResult String?
+  durationMin Int?
+  createdAt DateTime @default(now())
+  @@index([leadId, createdAt])
+}
+
+model FollowUp {
+  id String @id @default(cuid())
+  leadId String
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  dueAt DateTime
+  reason String?
+  notes String?
+  status FollowUpStatus @default(PENDING)
+  completedAt DateTime?
+  @@index([status, dueAt])
+}
+
+model Quotation {
+  id String @id @default(cuid())
+  leadId String
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  packageId String?
+  package Package? @relation(fields: [packageId], references: [id])
+  amount Int
+  discount Int @default(0)
+  finalAmount Int
+  status QuoteStatus @default(NOT_SENT)
+  quotedAt DateTime @default(now())
+}
+
+model PublicSignal {
+  id String @id @default(cuid())
+  foundAt DateTime @default(now())
+  who String
+  industryId String?
+  industry Industry? @relation(fields: [industryId], references: [id])
+  city String?
+  requirement String
+  source String
+  sourceUrl String?
+  type SignalType @default(OTHER)
+  intent Intent @default(UNVERIFIED)
+  leadId String?
+  lead Lead? @relation(fields: [leadId], references: [id])
+  notes String?
+}
+
+model Notification {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title String
+  href String?
+  read Boolean @default(false)
+  createdAt DateTime @default(now())
+}
